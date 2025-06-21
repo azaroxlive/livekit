@@ -1,20 +1,27 @@
+// /api/token/route.js
 import { NextResponse } from 'next/server';
 import { AccessToken } from 'livekit-server-sdk';
 
+export const runtime = 'edge';
+
 export async function POST(req) {
-  const { room, identity } = await req.json();
+  try {
+    const { room, identity } = await req.json();
 
-  const apiKey = process.env.LIVEKIT_API_KEY;
-  const apiSecret = process.env.LIVEKIT_API_SECRET;
+    const apiKey = process.env.LIVEKIT_API_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET;
 
-  if (!apiKey || !apiSecret) {
-    return NextResponse.json({ error: "Missing API credentials" }, { status: 500 });
+    if (!apiKey || !apiSecret) {
+      return NextResponse.json({ error: 'API keys missing' }, { status: 500 });
+    }
+
+    const token = new AccessToken(apiKey, apiSecret, { identity });
+    token.addGrant({ roomJoin: true, room });
+
+    const jwt = await token.toJwt();
+
+    return NextResponse.json({ token: jwt });
+  } catch (err) {
+    return NextResponse.json({ error: err.toString() }, { status: 500 });
   }
-
-  const at = new AccessToken(apiKey, apiSecret, { identity });
-  at.addGrant({ roomJoin: true, room });
-
-  const token = await at.toJwt();
-
-  return NextResponse.json({ token });
 }
