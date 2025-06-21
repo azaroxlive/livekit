@@ -1,27 +1,27 @@
-import { NextResponse } from 'next/server';
 import { AccessToken } from 'livekit-server-sdk';
 
-export const config = {
-  runtime: 'edge',
-};
-
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405 });
+    return res.status(405).json({ error: 'Méthode non autorisée' });
   }
 
-  const body = await req.json();
-  const { room, identity } = body;
+  const { room, identity } = req.body;
+
+  if (!room || !identity) {
+    return res.status(400).json({ error: 'room et identity sont requis' });
+  }
 
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
+
+  if (!apiKey || !apiSecret) {
+    return res.status(500).json({ error: 'Clés API manquantes' });
+  }
 
   const at = new AccessToken(apiKey, apiSecret, { identity });
   at.addGrant({ roomJoin: true, room });
 
   const token = await at.toJwt();
-  return new Response(JSON.stringify({ token }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+
+  return res.status(200).json({ token });
 }
